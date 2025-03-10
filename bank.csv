@@ -1,4 +1,8 @@
-Account_Id;First_name;Last_name;password;balance_checking;balance_saving
-001;abdullah;alhammadi;094u8934;600.0;300.0
-9872;abdullah;alhammdi;ugeuyd632;500.0;700.0
-2450;asb;wewew;05445;77.0;88.0
+Account_Id;First_name;Last_name;password;phone;balance_checking;balance_saving
+1310;abdb;jbcwjh;0934rfyu;937333;555.0;333.0
+9904;John;Doe;password123;1234567890;0.0;0.0
+8519;abdullah;mohammed;54563g;09575;0.0;0.0
+1789;abdu;gg;647;0646;0.0;0.0
+0302;asasa;fff;23;55;0.0;0.0
+9111;dd;ee;23;55;0.0;0.0
+8443;ww;tt;45;76;0.0;0.0
