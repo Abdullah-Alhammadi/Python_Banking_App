@@ -1,6 +1,5 @@
 Account_Id;First_name;Last_name;password;phone;balance_checking;balance_saving;account_status;
-1310;abdb;jbcwjh;0934rfyu;937333;555.0;333.0
-9904;John;Doe;password123;1234567890;0.0;0.0
 2388;abdullah;mohammed;asd123;05434;0.0;0.0;Inactive
 4817;ahmed;aly;asd1;999;100.0;0.0;Active
 0983;df;fd;54;45;0.0;200.0;Active
+1547;aly;khalid;123;066;123.0;0.0;Active
