@@ -44,7 +44,7 @@ class Bank:
             for line in file:
                 account_data = line.strip().split(';')
                 if account_data[0] == account_id and account_data[4] == phone and account_data[3] == password:
-                    return True
+                    return account_id
         return False
     
 
@@ -75,6 +75,7 @@ class Bank:
 
 
 
+
 class Account:
     def __init__(self, account_id, bank: Bank):
         self.account_id = account_id
@@ -88,17 +89,20 @@ class Account:
         if amount <= 0:
             print("Invalid deposit amount.")
             return
-
+    
+        current_balance = self.get_balance(account_type)
+    
         if account_type == "checking":
-            self.checking_balance += amount
+            self.checking_balance = current_balance + amount
         elif account_type == "savings":
-            self.savings_balance += amount
+            self.savings_balance = current_balance + amount
         else:
             print("Invalid account type.")
             return
-
+    
         self.activate_account()
         self.update_account_file()
+        print(f"New {account_type} balance after deposit: {self.get_balance(account_type)}")
 
 
 
@@ -106,47 +110,58 @@ class Account:
         if amount <= 0:
             print("Invalid withdrawal amount.")
             return
-
-        balance = self.get_balance(account_type)
-        if balance < amount:
+    
+        current_balance = self.get_balance(account_type)
+    
+        if current_balance < amount:
             print("Insufficient funds.")
             return
-
-        if not self.handle_overdraft(amount, account_type, balance):
-            return
-
+    
         if account_type == "checking":
-            self.checking_balance -= amount
+            self.checking_balance = current_balance - amount
         else:
-            self.savings_balance -= amount
-
+            self.savings_balance = current_balance - amount
+    
         self.activate_account()
         self.update_account_file()
+        print(f"New {account_type} balance after withdrawal: {self.get_balance(account_type)}")
 
 
 
     def transfer(self, amount, from_account="checking", to_account="savings"):
+
         if amount <= 0:
             print("Invalid transfer amount.")
             return
+       
 
         if from_account == to_account:
             print("Cannot transfer to the same account.")
             return
-
+    
+    
         if self.get_balance(from_account) < amount:
             print("Insufficient funds for transfer.")
             return
-
-
+        
+        self.checking_balance = self.get_balance(from_account)
+        self.savings_balance = self.get_balance(to_account)
         if from_account == "checking":
             self.checking_balance -= amount
             self.savings_balance += amount
         else:
             self.savings_balance -= amount
             self.checking_balance += amount
+        print(amount)
+        print(self.checking_balance)
+        print(self.savings_balance)
+
+
+        self.current_balance = self.get_balance(from_account)
+        self.current_balance = self.get_balance(to_account)
 
         self.update_account_file()
+        print(f"Transferred ${amount} from {from_account} to {to_account} successfully.")
 
     def handle_overdraft(self, amount, account_type, balance):
         if balance - amount < -100:
@@ -178,7 +193,19 @@ class Account:
         return True
 
     def get_balance(self, account_type):
-        return self.checking_balance if account_type == "checking" else self.savings_balance
+        with open(self.bank.account_file, 'r') as file:
+             lines = file.readlines()
+
+        for line in lines:
+            account_data = line.strip().split(';')
+            if account_data[0] == self.account_id:
+               balance = float(account_data[5]) if account_type == "checking" else float(account_data[6])
+               print(f"Retrieved balance for {account_type}: {balance}")
+               return balance
+
+        print(f"Account {self.account_id} not found!")
+        return 0.0
+
 
     def activate_account(self):
         if self.checking_balance > 0 or self.savings_balance > 0:
@@ -186,19 +213,31 @@ class Account:
         else:
             self.account_status = "Inactive"
 
+    def reactivate_account(self):
+        if self.account_status == "Inactive" and self.get_balance("checking") >= 0 and self.get_balance("savings") >= 0:
+           self.account_status = "Active"
+           print(f"Account {self.account_id} has been reactivated.")
+           self.update_account_file()
+
     def update_account_file(self):
+        updated_lines = []
+        
         with open(self.bank.account_file, 'r') as file:
             lines = file.readlines()
+    
+        for line in lines:
+            account_data = line.strip().split(';')
+            if account_data[0] == self.account_id:
+                account_data[5] = str(self.checking_balance)  
+                account_data[6] = str(self.savings_balance)
+                account_data[7] = self.account_status  
+            updated_lines.append(';'.join(account_data) + '\n')
+    
+        with open(self.bank.account_file, 'w') as file:
+            file.writelines(updated_lines)
+    
 
-        with open(self.bank.account_file, 'w', newline="") as file:
-            writer = csv.writer(file, delimiter=";")
-            for line in lines:
-                account_data = line.strip().split(';')
-                if account_data[0] == self.account_id:
-                    account_data[5] = str(self.checking_balance)
-                    account_data[6] = str(self.savings_balance)
-                    account_data[7] = self.account_status
-                writer.writerow(account_data)
+
 
 
 
@@ -245,7 +284,7 @@ class Transactions:
         sender_data = None
         receiver_data = None
         accounts = []
-
+    
         with open(self.bank.account_file, 'r') as file:
             for line in file:
                 account_data = line.strip().split(';')
@@ -254,28 +293,41 @@ class Transactions:
                 if account_data[0] == receiver_id:
                     receiver_data = account_data
                 accounts.append(account_data)
-
+    
         if not sender_data or not receiver_data:
             print("Account not found.")
             return False
-
+    
+        if sender_data[7] == "Inactive":
+            print("Sender's account is inactive. Cannot transfer money.")
+            return False
+    
         sender_balance = float(sender_data[5])
         receiver_balance = float(receiver_data[5])
-
+    
         if sender_balance < amount:
             print("Insufficient funds.")
             return False
-
+    
+        if sender_balance - amount < -100:
+            print("Transaction denied: Account balance cannot go below -$100.")
+            return False
+    
         sender_data[5] = str(sender_balance - amount)
         receiver_data[5] = str(receiver_balance + amount)
-
+    
         with open(self.bank.account_file, 'w', newline="") as file:
             writer = csv.writer(file, delimiter=";")
             for account in accounts:
                 writer.writerow(account)
-
-        print(f"Transferred {amount} from {sender_id} to {receiver_id}.")
+    
+        print(f"Transferred ${amount} from {sender_id} to {receiver_id}.")
         return True
+
+
+
+
+
 
 
 
@@ -287,56 +339,130 @@ def clear_screen():
 
 
 def start_app():
-    pass
+  while True:  
+    bank = Bank(bank_name=r"""
+ ________  ________  _____ ______   _______           ________  ________  ________   ___  __       
+|\   __  \|\   ____\|\   _ \  _   \|\  ___ \         |\   __  \|\   __  \|\   ___  \|\  \|\  \     
+\ \  \|\  \ \  \___|\ \  \\\__\ \  \ \   __/|        \ \  \|\ /\ \  \|\  \ \  \\ \  \ \  \/  /|_   
+ \ \   __  \ \  \    \ \  \\|__| \  \ \  \_|/__       \ \   __  \ \   __  \ \  \\ \  \ \   ___  \  
+  \ \  \ \  \ \  \____\ \  \    \ \  \ \  \_|\ \       \ \  \|\  \ \  \ \  \ \  \\ \  \ \  \\ \  \ 
+   \ \__\ \__\ \_______\ \__\    \ \__\ \_______\       \ \_______\ \__\ \__\ \__\\ \__\ \__\\ \__\
+    \|__|\|__|\|_______|\|__|     \|__|\|_______|        \|_______|\|__|\|__|\|__| \|__|\|__| \|__|                                                                                                                                                                                                                                                                                      
+""")
+    print(bank.bank_name)
+    print("""
+          1. create an account
+          2. log-in
+          
+          """)
+    response = input("please choose (1/2) to continue: ")
+
+    if response == "1":
+        clear_screen()
+
+        customer = Customer(bank)
+        account_id = customer.add_customer(
+            input("Enter your first name: "), 
+            input("Enter your last name: "), 
+            input("Enter phone: "), 
+            input("Enter password: ")
+            )
+        clear_screen()
+        print("please wait.........")
+        time.sleep(3)
+
+        print(f"Account created successfully! Account ID: {account_id}\n")
+        customer.show_customer_details(account_id)
+        if input("Do you want to back to 1.home or 2.exit") == "2":
+            break
 
 
 
+    elif response == "2":
+        customer_log = Customer(bank)
+        account_id = customer_log.log_in_customer(
+            input("Enter your ID: "),
+            input("Enter your phone: "),
+            input("Enter your password: ")
+        )
+        clear_screen()
+        print(f"--- Welcome---\n\n")
+        time.sleep(2)
+        while True:
+            print("""
+              1. Deposit Money
+              2. Withdraw Money
+              3. Transfer Money
+              4. Show Account Details
+              5. transfer from your checking and savings   
+              6. Delete Account
+              7. Logout 
+              """)    
+            choice = input("Please choose a number to continue: ")
+            account = Account(account_id, bank) 
+
+            if choice == "1":
+               amount = float(input("Enter amount to deposit: "))
+               account_type = input("Enter account type (checking/savings): ").strip().lower()
+               if account_type in ["checking", "savings"]:
+                  account.deposit(amount, account_type)
+               else:
+                  print("Invalid account type. Please enter 'checking' or 'savings'.")
+                
 
 
-
-
-
-
-
-
-# def test_classes():
-#     bank = Bank(bank_name="ASME")
-#     print(f"Welcome to {bank.bank_name}")
-#     while True:
-#         print("""
-#            1. Create an account
-#            2. Log in
-#            3. Exit
-#         """)
+            elif choice == "2":
+                 amount = float(input("Enter amount to withdraw: "))
+                 account_type = input("Enter account type (checking/savings): ").strip().lower()
+                 if account_type in ["checking", "savings"]:
+                    account.withdraw(amount, account_type)
+                 else:
+                    print("Invalid account type. Please enter 'checking' or 'savings'.")
     
-#         response = input("Choose 1, 2: ")
-
-#         if response == "1":
-#             customer = Customer(bank)
-#             account_id = customer.add_customer(
-#                 input("Enter your first name: "), 
-#                 input("Enter your last name: "), 
-#                 input("Enter phone: "), 
-#                 input("Enter password: ")
-#             )
-#             clear_screen()
-#             print(f"Account created successfully! Account ID: {account_id}")
-#             customer.show_customer_details(account_id)
-#         elif response == "2":
-#             customer_log = Customer(bank)
-#             account_id = customer_log.log_in_customer(
-#                 input("Enter your ID: "),
-#                 input("Enter your phone: "),
-#                 input("Enter your password: ")
-#             )
+     
+            elif choice == "3":
+                 receiver_id = input("E nter receiver's account ID: ")
+                 amount = float(input("Enter amount to transfer: "))
+                 transactions = Transactions(bank)
+                 transactions.transfer_money(account_id, receiver_id, amount)
+     
+            elif choice == "4":
+                 customer = Customer(bank)
+                 customer.show_customer_details(account_id)
+     
             
-        
-#         else:
-#             print("Invlaid")    
+            
+            elif choice == "5":
+                 amount = float(input("Enter amount to transfer between checking and savings: "))
+                 direction = input("Transfer from (checking to savings / savings to checking): ").strip().lower()
+                 if direction == "checking to savings":
+                     account.transfer(amount, "checking", "savings")
+                 elif direction == "savings to checking":
+                     account.transfer(amount, "savings", "checking")
+                 else:
+                     print("Invalid transfer direction.")
 
 
-#         if input("Do you want to continue: ") == "n":
-#             break
+            elif choice == "6":
+                 confirm = input("Are you sure you want to delete your account? (yes/no): ").strip().lower()
+                 if confirm == "yes":
+                     if Customer(bank).delete_customer_account(account_id):
+                         print("Account deleted successfully. Logging out...")
+                         break         
 
-# test_classes()
+      
+            elif choice == "7":
+                 print("Logging out...")
+                 break
+     
+            else:
+                 print("Invalid choice, please try again.")
+
+    else:
+        print("Invalid typed")             
+     
+
+
+
+start_app()
 
