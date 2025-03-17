@@ -356,35 +356,6 @@ class Customer:
     def delete_customer_account(self, account_id):
         return self.bank.delete_account(account_id)     
 
-    class Customer:
-        def __init__(self, bank: Bank):
-            self.bank = bank
-       
-        def add_customer(self, first_name, last_name, phone, password):
-            return self.bank.create_account(first_name, last_name, phone, password)
-       
-        def show_customer_details(self, account_id):
-            found = False  
-            with open(self.bank.account_file, 'r') as file:
-                for line in file:
-                    account_data = line.strip().split(';')
-                    if account_data[0] == account_id:
-                        found = True  
-                        print(f"Customer Details for Account ID {account_id}:")
-                        print(f"First Name: {account_data[1]}")
-                        print(f"Last Name: {account_data[2]}")
-                        print(f"Phone: {account_data[4]}")
-                        break   
-                       
-            if not found:
-                print(f"No details found for Account ID {account_id}.")
-        
-        def log_in_customer(self, account_id, phone, password):
-            return self.bank.log_in(account_id, phone, password)
-       
-        def delete_customer_account(self, account_id):
-            return self.bank.delete_account(account_id)     
-
    
 
 
