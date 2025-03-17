@@ -1,2 +1,4 @@
 Account_Id;First_name;Last_name;password;phone;balance_checking;balance_saving;account_status;
-2388;abdullah;mohammed;asd123;05434;100.0;0.0;Active
+2388;abdullah;mohammed;asd123;05434;150.0;0.0;Active
+1;abdullah;Mohammed;1;1;112.0;10.0;Active
+11;ad;ert;1;1;122.0;0.0;Active
